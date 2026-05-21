@@ -1,0 +1,77 @@
+package com.ftn.sbnz.kjar.rules;
+
+import com.ftn.model.Biljka;
+import com.ftn.model.Alarm;
+import com.ftn.model.Dijagnoza;
+import com.ftn.model.NalogZaAkciju;
+import com.ftn.model.Notifikacija;
+
+rule "Pokretanje pumpe"
+    salience 50
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaVlaga == true, prazanRezervoar != true )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId, pokretanjePumpe != true, blokiranoZalivanje != true )
+then
+    modify($nalog) {
+        setPokretanjePumpe(true)
+    };
+    insert(new Notifikacija($biljkaId, "Pumpa pokrenuta za biljku " + $biljka.getNaziv() + ".", "INFO"));
+end
+
+rule "Blokada zalivanja zbog praznog rezervoara"
+    salience 50
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaVlaga == true, prazanRezervoar == true )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId, blokiranoZalivanje != true )
+then
+    modify($nalog) {
+        setBlokiranoZalivanje(true)
+    };
+    insert(new Notifikacija($biljkaId, "Zalivanje blokirano za biljku " + $biljka.getNaziv() + ". Rezervoar je prazan!", "ALARM"));
+end
+
+rule "Blokada zalivanja zbog trulezi"
+    salience 50
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikTrulezi == true )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId, blokiranoZalivanje != true )
+then
+    modify($nalog) {
+        setBlokiranoZalivanje(true)
+    };
+    insert(new Notifikacija($biljkaId, "Zalivanje blokirano za biljku " + $biljka.getNaziv() + " zbog rizika od trulezi korena.", "ALARM"));
+end
+
+rule "Paljenje grejalice"
+    salience 50
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaTemperatura == true )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId, paljenjeGrejalice != true )
+then
+    modify($nalog) {
+        setPaljenjeGrejalice(true)
+    };
+    insert(new Notifikacija($biljkaId, "Grejalica upaljena za biljku " + $biljka.getNaziv() + ".", "INFO"));
+end
+
+rule "Paljenje UV lampe"
+    salience 50
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaSvetlost == true )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId, paljenjeUvLampe != true )
+then
+    modify($nalog) {
+        setPaljenjeUvLampe(true)
+    };
+    insert(new Notifikacija($biljkaId, "UV lampa upaljena za biljku " + $biljka.getNaziv() + ".", "INFO"));
+end

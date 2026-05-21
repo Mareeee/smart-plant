@@ -1,0 +1,86 @@
+package com.ftn.sbnz.kjar.rules;
+
+import com.ftn.model.Biljka;
+import com.ftn.model.ParametriBiljke;
+import com.ftn.model.SenzorskoOcitavanje;
+import com.ftn.model.Alarm;
+import com.ftn.model.Notifikacija;
+
+rule "Niska vlaga zemljista"
+    salience 90
+    no-loop true
+when
+    $ocitavanje : SenzorskoOcitavanje( $biljkaId : biljkaId, $vlaga : vlaznostZemljista )
+    $biljka : Biljka( id == $biljkaId, $tip : tipBiljke )
+    $parametri : ParametriBiljke( tipBiljke == $tip, $minVlaga : minVlaga )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaVlaga != true )
+    eval( $vlaga < $minVlaga )
+then
+    modify($alarm) {
+        setNiskaVlaga(true)
+    };
+    insert(new Notifikacija($biljkaId, "Biljka " + $biljka.getNaziv() + " je zedna! Trenutna vlaznost: " + $vlaga + "%", "UPOZORENJE"));
+end
+
+rule "Visoka vlaga zemljista"
+    salience 90
+    no-loop true
+when
+    $ocitavanje : SenzorskoOcitavanje( $biljkaId : biljkaId, $vlaga : vlaznostZemljista )
+    $biljka : Biljka( id == $biljkaId, $tip : tipBiljke )
+    $parametri : ParametriBiljke( tipBiljke == $tip, $maxVlaga : maxVlaga )
+    $alarm : Alarm( biljkaId == $biljkaId, visokaVlaga != true )
+    eval( $vlaga > $maxVlaga )
+then
+    modify($alarm) {
+        setVisokaVlaga(true)
+    };
+    insert(new Notifikacija($biljkaId, "Upozorenje: biljka " + $biljka.getNaziv() + " je prezalivana! Trenutna vlaznost: " + $vlaga + "%", "UPOZORENJE"));
+end
+
+rule "Niska temperatura"
+    salience 90
+    no-loop true
+when
+    $ocitavanje : SenzorskoOcitavanje( $biljkaId : biljkaId, $temp : temperatura )
+    $biljka : Biljka( id == $biljkaId, $tip : tipBiljke )
+    $parametri : ParametriBiljke( tipBiljke == $tip, $minTemp : minTemperatura )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaTemperatura != true )
+    eval( $temp < $minTemp )
+then
+    modify($alarm) {
+        setNiskaTemperatura(true)
+    };
+    insert(new Notifikacija($biljkaId, "Temperatura preniska za biljku " + $biljka.getNaziv() + ": " + $temp + "C", "UPOZORENJE"));
+end
+
+rule "Niska svetlost"
+    salience 90
+    no-loop true
+when
+    $ocitavanje : SenzorskoOcitavanje( $biljkaId : biljkaId, $svetlost : svetlost )
+    $biljka : Biljka( id == $biljkaId, $tip : tipBiljke )
+    $parametri : ParametriBiljke( tipBiljke == $tip, $minSvetlost : minSvetlost )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaSvetlost != true )
+    eval( $svetlost < $minSvetlost )
+then
+    modify($alarm) {
+        setNiskaSvetlost(true)
+    };
+    insert(new Notifikacija($biljkaId, "Nedovoljna svetlost za biljku " + $biljka.getNaziv() + ": " + $svetlost + " lux", "UPOZORENJE"));
+end
+
+rule "Prazan rezervoar"
+    salience 90
+    no-loop true
+when
+    $ocitavanje : SenzorskoOcitavanje( $biljkaId : biljkaId, $nivo : nivoRezervoara )
+    $biljka : Biljka( id == $biljkaId )
+    $alarm : Alarm( biljkaId == $biljkaId, prazanRezervoar != true )
+    eval( $nivo <= 10 )
+then
+    modify($alarm) {
+        setPrazanRezervoar(true)
+    };
+    insert(new Notifikacija($biljkaId, "ALARM: Rezervoar prazan! Biljka " + $biljka.getNaziv() + " ne moze biti zalivena.", "ALARM"));
+end

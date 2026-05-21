@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="sr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPlant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f0;
+            color: #2d2d2d;
+        }
+
+        header {
+            background-color: #2e7d32;
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        header span {
+            font-size: 2rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8f5e9;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #2e7d32;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #2e7d32;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #1b5e20;
+        }
+
+        .btn:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+
+        .results-panel {
+            grid-column: 1 / -1;
+            display: none;
+        }
+
+        .results-panel.visible {
+            display: block;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-box {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 18px;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .result-box h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-box .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.88rem;
+        }
+
+        .result-box .item:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .badge-true {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .badge-false {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-null {
+            background-color: #f5f5f5;
+            color: #999;
+        }
+
+        .notifikacije-lista {
+            list-style: none;
+        }
+
+        .notifikacije-lista li {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .notif-INFO {
+            background-color: #e3f2fd;
+            border-left: 4px solid #1565c0;
+            color: #0d47a1;
+        }
+
+        .notif-UPOZORENJE {
+            background-color: #fff8e1;
+            border-left: 4px solid #f9a825;
+            color: #e65100;
+        }
+
+        .notif-ALARM {
+            background-color: #ffebee;
+            border-left: 4px solid #c62828;
+            color: #b71c1c;
+        }
+
+        .notif-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .error-msg {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 12px;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #2e7d32;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <span>🌿</span>
+        <h1>SmartPlant - Sistem za automatizovanu negu biljaka</h1>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>Podaci o biljci</h2>
+            <div class="form-group">
+                <label>ID Biljke</label>
+                <input type="number" id="biljkaId" value="1" min="1">
+            </div>
+            <div class="form-group">
+                <label>Naziv biljke</label>
+                <input type="text" id="naziv" value="Moja Orhideja">
+            </div>
+            <div class="form-group">
+                <label>Tip biljke</label>
+                <select id="tipBiljke">
+                    <option value="ORHIDEJA">Orhideja</option>
+                    <option value="KAKTUS">Kaktus</option>
+                    <option value="FIKUS">Fikus</option>
+                    <option value="PAPRAT">Paprat</option>
+                    <option value="RUZA">Ruža</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Senzorska očitavanja</h2>
+            <div class="form-group">
+                <label>Vlažnost zemljišta (%)</label>
+                <input type="number" id="vlaznost" value="12" min="0" max="100">
+            </div>
+            <div class="form-group">
+                <label>Temperatura (°C)</label>
+                <input type="number" id="temperatura" value="16" step="0.1">
+            </div>
+            <div class="form-group">
+                <label>Svetlost (lux)</label>
+                <input type="number" id="svetlost" value="800" min="0">
+            </div>
+            <div class="form-group">
+                <label>Nivo rezervoara (%)</label>
+                <input type="number" id="rezervoar" value="50" min="0" max="100">
+            </div>
+            <button class="btn" id="btnAnaliziraj" onclick="analiziraj()">Pošalji u Drools Engine</button>
+            <div class="error-msg" id="errorMsg"></div>
+        </div>
+
+        <div class="results-panel" id="resultsPanel">
+            <div class="card">
+                <h2>Rezultati analize</h2>
+                <div class="loader" id="loader">Engine procesira pravila...</div>
+                <div id="resultsContent">
+                    <div class="results-grid">
+                        <div class="result-box">
+                            <h3>Nivo 1 - Alarmi</h3>
+                            <div id="alarmContent"></div>
+                        </div>
+                        <div class="result-box">
+                            <h3>Nivo 2 - Dijagnoza</h3>
+                            <div id="dijagnozaContent"></div>
+                        </div>
+                        <div class="result-box">
+                            <h3>Nivo 3 - Akcije</h3>
+                            <div id="akcijeContent"></div>
+                        </div>
+                    </div>
+                    <div class="result-box">
+                        <h3>🔔 Notifikacije</h3>
+                        <ul class="notifikacije-lista" id="notifikacijeContent"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function badge(value) {
+            if (value === true) return '<span class="badge badge-true">DA</span>';
+            if (value === false) return '<span class="badge badge-false">NE</span>';
+            return '<span class="badge badge-null">-</span>';
+        }
+
+        function item(label, value) {
+            return '<div class="item"><span>' + label + '</span>' + badge(value) + '</div>';
+        }
+
+        function notifIcon(prioritet) {
+            if (prioritet === 'ALARM') return '🔴';
+            if (prioritet === 'UPOZORENJE') return '🟡';
+            return '🔵';
+        }
+
+        async function analiziraj() {
+            const btn = document.getElementById('btnAnaliziraj');
+            const errorMsg = document.getElementById('errorMsg');
+            const resultsPanel = document.getElementById('resultsPanel');
+            const loader = document.getElementById('loader');
+            const resultsContent = document.getElementById('resultsContent');
+
+            errorMsg.style.display = 'none';
+            btn.disabled = true;
+            resultsPanel.classList.add('visible');
+            loader.style.display = 'block';
+            resultsContent.style.display = 'none';
+
+            const payload = {
+                biljkaId: parseInt(document.getElementById('biljkaId').value),
+                naziv: document.getElementById('naziv').value,
+                tipBiljke: document.getElementById('tipBiljke').value,
+                vlaznostZemljista: parseFloat(document.getElementById('vlaznost').value),
+                temperatura: parseFloat(document.getElementById('temperatura').value),
+                svetlost: parseFloat(document.getElementById('svetlost').value),
+                nivoRezervoara: parseFloat(document.getElementById('rezervoar').value)
+            };
+
+            try {
+                const response = await fetch('/api/smartplant/analiziraj', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('Server greška: ' + response.status);
+
+                const data = await response.json();
+
+                document.getElementById('alarmContent').innerHTML =
+                    item('Niska vlaga', data.alarm.niskaVlaga) +
+                    item('Visoka vlaga', data.alarm.visokaVlaga) +
+                    item('Niska temperatura', data.alarm.niskaTemperatura) +
+                    item('Niska svetlost', data.alarm.niskaSvetlost) +
+                    item('Prazan rezervoar', data.alarm.prazanRezervoar);
+
+                document.getElementById('dijagnozaContent').innerHTML =
+                    item('Rizik truleži', data.dijagnoza.rizikTrulezi) +
+                    item('Rizik pepelnice', data.dijagnoza.rizikPepelnice) +
+                    item('Rizik crvenog pauka', data.dijagnoza.rizikCrvenogPauka) +
+                    item('Rizik lisnih vaši', data.dijagnoza.rizikLisnihVasi) +
+                    item('Kritično stanje', data.dijagnoza.kriticnoStanje);
+
+                document.getElementById('akcijeContent').innerHTML =
+                    item('Pokretanje pumpe', data.nalogZaAkciju.pokretanjePumpe) +
+                    item('Paljenje grejalice', data.nalogZaAkciju.paljenjeGrejalice) +
+                    item('Paljenje UV lampe', data.nalogZaAkciju.paljenjeUvLampe) +
+                    item('Blokirano zalivanje', data.nalogZaAkciju.blokiranoZalivanje);
+
+                const notifList = document.getElementById('notifikacijeContent');
+                notifList.innerHTML = '';
+                if (data.notifikacije.length === 0) {
+                    notifList.innerHTML = '<li style="color:#999; font-size:0.9rem;">Nema notifikacija.</li>';
+                } else {
+                    data.notifikacije.forEach(n => {
+                        notifList.innerHTML += '<li class="notif-' + n.prioritet + '">' +
+                            '<span class="notif-icon">' + notifIcon(n.prioritet) + '</span>' +
+                            '<span>' + n.poruka + '</span></li>';
+                    });
+                }
+
+                loader.style.display = 'none';
+                resultsContent.style.display = 'block';
+
+            } catch (err) {
+                loader.style.display = 'none';
+                resultsPanel.classList.remove('visible');
+                errorMsg.textContent = 'Greška: ' + err.message;
+                errorMsg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+
+</body>
+
+</html>

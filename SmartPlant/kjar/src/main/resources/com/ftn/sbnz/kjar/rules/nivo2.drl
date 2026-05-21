@@ -1,0 +1,80 @@
+package com.ftn.sbnz.kjar.rules;
+
+import com.ftn.model.Biljka;
+import com.ftn.model.Alarm;
+import com.ftn.model.Dijagnoza;
+import com.ftn.model.Notifikacija;
+import com.ftn.model.TipBiljke;
+
+rule "Rizik od trulezi korena"
+    salience 70
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $alarm : Alarm( biljkaId == $biljkaId, visokaVlaga == true, niskaTemperatura == true )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikTrulezi != true )
+then
+    modify($dijagnoza) {
+        setRizikTrulezi(true)
+    };
+    insert(new Notifikacija($biljkaId, "Povisen rizik od trulezi korena za biljku " + $biljka.getNaziv() + ". Obustaviti zalivanje i poboljsati drenazu.", "ALARM"));
+end
+
+rule "Rizik od pepelnice"
+    salience 70
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id, tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.FIKUS )
+    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura, $vlaga : vlaznostZemljista )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikPepelnice != true )
+    eval( $temp >= 15 && $temp <= 28 && $vlaga < 40 )
+then
+    modify($dijagnoza) {
+        setRizikPepelnice(true)
+    };
+    insert(new Notifikacija($biljkaId, "Uslovi pogoduju razvoju pepelnice za biljku " + $biljka.getNaziv() + ". Preporuka: povecati vlaznost vazduha.", "UPOZORENJE"));
+end
+
+rule "Rizik od crvenog pauka"
+    salience 70
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura, $vlaga : vlaznostZemljista )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikCrvenogPauka != true )
+    eval( $temp > 25 && $vlaga < 35 )
+then
+    modify($dijagnoza) {
+        setRizikCrvenogPauka(true)
+    };
+    insert(new Notifikacija($biljkaId, "Uslovi pogoduju razvoju crvenog pauka za biljku " + $biljka.getNaziv() + ". Proveriti nalicje listova.", "UPOZORENJE"));
+end
+
+rule "Rizik od lisnih vasi"
+    salience 70
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id, tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.ORHIDEJA )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaSvetlost == true )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikLisnihVasi != true )
+then
+    modify($dijagnoza) {
+        setRizikLisnihVasi(true)
+    };
+    insert(new Notifikacija($biljkaId, "Oslabljena biljka " + $biljka.getNaziv() + " je podlozna napadu lisnih vasi. Poboljsati osvetljenost.", "UPOZORENJE"));
+end
+
+rule "Kriticno stanje biljke"
+    salience 60
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, kriticnoStanje != true,
+        (rizikTrulezi == true || rizikPepelnice == true),
+        (rizikCrvenogPauka == true || rizikLisnihVasi == true) )
+then
+    modify($dijagnoza) {
+        setKriticnoStanje(true)
+    };
+    insert(new Notifikacija($biljkaId, "KRITICNO: Biljka " + $biljka.getNaziv() + " je istovremeno ugrozena bolescu i stetocinama! Preporucuje se hitni pregled.", "ALARM"));
+end
