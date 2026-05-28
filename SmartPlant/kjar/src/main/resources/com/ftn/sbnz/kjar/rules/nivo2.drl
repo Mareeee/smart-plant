@@ -4,30 +4,18 @@ import com.ftn.model.Biljka;
 import com.ftn.model.Alarm;
 import com.ftn.model.Dijagnoza;
 import com.ftn.model.Notifikacija;
+import com.ftn.model.IstorijaZalivanja;
+import com.ftn.model.SenzorskoOcitavanje;
 import com.ftn.model.TipBiljke;
-
-rule "Rizik od trulezi korena"
-    salience 70
-    no-loop true
-when
-    $biljka : Biljka( $biljkaId : id )
-    $alarm : Alarm( biljkaId == $biljkaId, visokaVlaga == true, niskaTemperatura == true )
-    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikTrulezi != true )
-then
-    modify($dijagnoza) {
-        setRizikTrulezi(true)
-    };
-    insert(new Notifikacija($biljkaId, "Povisen rizik od trulezi korena za biljku " + $biljka.getNaziv() + ". Obustaviti zalivanje i poboljsati drenazu.", "ALARM"));
-end
 
 rule "Rizik od pepelnice"
     salience 70
     no-loop true
 when
     $biljka : Biljka( $biljkaId : id, tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.FIKUS )
-    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura, $vlaga : vlaznostZemljista )
+    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura, $vlaznostVazduha : vlaznostVazduha )
     $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikPepelnice != true )
-    eval( $temp >= 15 && $temp <= 28 && $vlaga < 40 )
+    eval( $temp >= 15 && $temp <= 28 && $vlaznostVazduha < 40 )
 then
     modify($dijagnoza) {
         setRizikPepelnice(true)
@@ -35,14 +23,39 @@ then
     insert(new Notifikacija($biljkaId, "Uslovi pogoduju razvoju pepelnice za biljku " + $biljka.getNaziv() + ". Preporuka: povecati vlaznost vazduha.", "UPOZORENJE"));
 end
 
+rule "Rizik od trulezi korena"
+    salience 70
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura )
+    $alarm : Alarm( biljkaId == $biljkaId, visokaVlaga == true )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikTrulezi != true )
+    $nowMs : Long()
+    eval( $temp < 18 )
+    accumulate(
+        $z : IstorijaZalivanja(
+            biljkaId == $biljkaId,
+            $tsMs : timestampMs,
+            eval( $nowMs - $tsMs <= 48L * 60L * 60L * 1000L )
+        );
+        $count : count($z);
+        $count > 2
+    )
+then
+    modify($dijagnoza) {
+        setRizikTrulezi(true)
+    };
+    insert(new Notifikacija($biljkaId, "Povisen rizik od trulezi korena za biljku " + $biljka.getNaziv() + ". Obustaviti zalivanje i poboljsati drenazu.", "ALARM"));
+end
+
 rule "Rizik od crvenog pauka"
     salience 70
     no-loop true
 when
     $biljka : Biljka( $biljkaId : id )
-    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura, $vlaga : vlaznostZemljista )
+    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, temperatura > 25, vlaznostVazduha < 35 )
     $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikCrvenogPauka != true )
-    eval( $temp > 25 && $vlaga < 35 )
 then
     modify($dijagnoza) {
         setRizikCrvenogPauka(true)
@@ -55,13 +68,15 @@ rule "Rizik od lisnih vasi"
     no-loop true
 when
     $biljka : Biljka( $biljkaId : id, tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.ORHIDEJA )
+    $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura )
     $alarm : Alarm( biljkaId == $biljkaId, niskaSvetlost == true )
     $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikLisnihVasi != true )
+    eval( $temp >= 18 && $temp <= 24 )
 then
     modify($dijagnoza) {
         setRizikLisnihVasi(true)
     };
-    insert(new Notifikacija($biljkaId, "Oslabljena biljka " + $biljka.getNaziv() + " je podlozna napadu lisnih vasi. Poboljsati osvetljenost.", "UPOZORENJE"));
+    insert(new Notifikacija($biljkaId, "Oslabljena biljka " + $biljka.getNaziv() + " je podlozna napadu lisnih vasi. Poboljsati osvetljenost i pregledati biljku.", "UPOZORENJE"));
 end
 
 rule "Kriticno stanje biljke"
@@ -76,5 +91,5 @@ then
     modify($dijagnoza) {
         setKriticnoStanje(true)
     };
-    insert(new Notifikacija($biljkaId, "KRITICNO: Biljka " + $biljka.getNaziv() + " je istovremeno ugrozena bolescu i stetocinama! Preporucuje se hitni pregled.", "ALARM"));
+    insert(new Notifikacija($biljkaId, "KRITICNO: Biljka " + $biljka.getNaziv() + " je istovremeno ugrozena bolescu i stetocinama! Preporucuje se hitni pregled i tretman.", "ALARM"));
 end

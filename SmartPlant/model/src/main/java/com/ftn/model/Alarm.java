@@ -14,6 +14,11 @@ public class Alarm {
 
     public Alarm(Long biljkaId) {
         this.biljkaId = biljkaId;
+        this.niskaVlaga = false;
+        this.visokaVlaga = false;
+        this.niskaTemperatura = false;
+        this.niskaSvetlost = false;
+        this.prazanRezervoar = false;
     }
 
     public Long getBiljkaId() {

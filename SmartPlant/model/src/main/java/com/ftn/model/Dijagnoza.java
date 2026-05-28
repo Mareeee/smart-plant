@@ -14,6 +14,12 @@ public class Dijagnoza {
 
     public Dijagnoza(Long biljkaId) {
         this.biljkaId = biljkaId;
+        this.rizikTrulezi = false;
+        this.rizikPepelnice = false;
+        this.rizikCrvenogPauka = false;
+        this.rizikLisnihVasi = false;
+        this.kriticnoStanje = false;
+
     }
 
     public Long getBiljkaId() {

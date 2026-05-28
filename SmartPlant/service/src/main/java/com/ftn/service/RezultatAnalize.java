@@ -2,6 +2,7 @@ package com.ftn.service;
 
 import com.ftn.model.Alarm;
 import com.ftn.model.Dijagnoza;
+import com.ftn.model.IstorijaZalivanja;
 import com.ftn.model.NalogZaAkciju;
 import com.ftn.model.Notifikacija;
 
@@ -13,16 +14,18 @@ public class RezultatAnalize {
     private Dijagnoza dijagnoza;
     private NalogZaAkciju nalogZaAkciju;
     private List<Notifikacija> notifikacije;
+    private List<IstorijaZalivanja> novaZalivanja;
 
     public RezultatAnalize() {
     }
 
     public RezultatAnalize(Alarm alarm, Dijagnoza dijagnoza, NalogZaAkciju nalogZaAkciju,
-            List<Notifikacija> notifikacije) {
+            List<Notifikacija> notifikacije, List<IstorijaZalivanja> novaZalivanja) {
         this.alarm = alarm;
         this.dijagnoza = dijagnoza;
         this.nalogZaAkciju = nalogZaAkciju;
         this.notifikacije = notifikacije;
+        this.novaZalivanja = novaZalivanja;
     }
 
     public Alarm getAlarm() {
@@ -55,5 +58,13 @@ public class RezultatAnalize {
 
     public void setNotifikacije(List<Notifikacija> notifikacije) {
         this.notifikacije = notifikacije;
+    }
+
+    public List<IstorijaZalivanja> getNovaZalivanja() {
+        return novaZalivanja;
+    }
+
+    public void setNovaZalivanja(List<IstorijaZalivanja> novaZalivanja) {
+        this.novaZalivanja = novaZalivanja;
     }
 }

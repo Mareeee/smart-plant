@@ -3,6 +3,7 @@ package com.ftn.sbnz.kjar.rules;
 import com.ftn.model.Biljka;
 import com.ftn.model.Alarm;
 import com.ftn.model.Dijagnoza;
+import com.ftn.model.IstorijaZalivanja;
 import com.ftn.model.NalogZaAkciju;
 import com.ftn.model.Notifikacija;
 
@@ -13,10 +14,12 @@ when
     $biljka : Biljka( $biljkaId : id )
     $alarm : Alarm( biljkaId == $biljkaId, niskaVlaga == true, prazanRezervoar != true )
     $nalog : NalogZaAkciju( biljkaId == $biljkaId, pokretanjePumpe != true, blokiranoZalivanje != true )
+    $nowMs : Long()
 then
     modify($nalog) {
         setPokretanjePumpe(true)
     };
+    insert(new IstorijaZalivanja($biljkaId, $nowMs));
     insert(new Notifikacija($biljkaId, "Pumpa pokrenuta za biljku " + $biljka.getNaziv() + ".", "INFO"));
 end
 
@@ -46,6 +49,17 @@ then
         setBlokiranoZalivanje(true)
     };
     insert(new Notifikacija($biljkaId, "Zalivanje blokirano za biljku " + $biljka.getNaziv() + " zbog rizika od trulezi korena.", "ALARM"));
+end
+
+rule "Obavesti o blokadi zalivanja zbog senzora"
+    salience 50
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $alarm : Alarm( biljkaId == $biljkaId, niskaVlaga == true, prazanRezervoar != true )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId, blokiranoZalivanje == true )
+then
+    insert(new Notifikacija($biljkaId, "Zalivanje blokirano za biljku " + $biljka.getNaziv() + ". Resetujte blokadu manuelno nakon provere senzora.", "ALARM"));
 end
 
 rule "Paljenje grejalice"

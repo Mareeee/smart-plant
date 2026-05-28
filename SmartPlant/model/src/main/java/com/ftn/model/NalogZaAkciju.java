@@ -13,6 +13,10 @@ public class NalogZaAkciju {
 
     public NalogZaAkciju(Long biljkaId) {
         this.biljkaId = biljkaId;
+        this.pokretanjePumpe = false;
+        this.paljenjeGrejalice = false;
+        this.paljenjeUvLampe = false;
+        this.blokiranoZalivanje = false;
     }
 
     public Long getBiljkaId() {

@@ -1,0 +1,63 @@
+package com.ftn.sbnz.kjar.rules;
+
+import com.ftn.model.SenzorskoOcitavanje;
+import com.ftn.model.Alarm;
+import com.ftn.model.Dijagnoza;
+import com.ftn.model.NalogZaAkciju;
+
+rule "Resetuj alarm pri novom ocitavanju"
+    salience 200
+    lock-on-active true
+when
+    $novo : SenzorskoOcitavanje( $biljkaId : biljkaId )
+    $alarm : Alarm( biljkaId == $biljkaId )
+then
+    modify($alarm) {
+        setNiskaVlaga(false),
+        setVisokaVlaga(false),
+        setNiskaTemperatura(false),
+        setNiskaSvetlost(false),
+        setPrazanRezervoar(false)
+    };
+end
+
+rule "Resetuj dijagnozu pri novom ocitavanju"
+    salience 200
+    lock-on-active true
+when
+    $novo : SenzorskoOcitavanje( $biljkaId : biljkaId )
+    $dijagnoza : Dijagnoza( biljkaId == $biljkaId )
+then
+    modify($dijagnoza) {
+        setRizikTrulezi(false),
+        setRizikPepelnice(false),
+        setRizikCrvenogPauka(false),
+        setRizikLisnihVasi(false),
+        setKriticnoStanje(false)
+    };
+end
+
+rule "Resetuj nalog pri novom ocitavanju"
+    salience 200
+    lock-on-active true
+when
+    $novo : SenzorskoOcitavanje( $biljkaId : biljkaId )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId )
+then
+    modify($nalog) {
+        setPokretanjePumpe(false),
+        setPaljenjeGrejalice(false),
+        setPaljenjeUvLampe(false),
+        setBlokiranoZalivanje(false)
+    };
+end
+
+rule "Ukloni staro ocitavanje"
+    salience 190
+    no-loop true
+when
+    $staro : SenzorskoOcitavanje( $biljkaId : biljkaId )
+    $novo : SenzorskoOcitavanje( biljkaId == $biljkaId, this != $staro )
+then
+    retract($staro);
+end

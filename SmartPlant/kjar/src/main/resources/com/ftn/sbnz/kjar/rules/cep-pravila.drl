@@ -1,0 +1,71 @@
+package com.ftn.sbnz.kjar.rules;
+
+import com.ftn.model.Biljka;
+import com.ftn.model.SenzorskoOcitavanje;
+import com.ftn.model.NalogZaAkciju;
+import com.ftn.model.Notifikacija;
+
+declare SenzorskoOcitavanje
+    @role(event)
+    @timestamp(timestampMs)
+end
+
+rule "Nagli pad temperature"
+    salience 100
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $staro : SenzorskoOcitavanje( biljkaId == $biljkaId, $tempStaro : temperatura )
+    $novo : SenzorskoOcitavanje(
+        biljkaId == $biljkaId,
+        this != $staro,
+        $tempNovo : temperatura,
+        eval( $tempStaro - $tempNovo > 10 ),
+        this after[0s, 5m] $staro
+    )
+then
+    double pad = $tempStaro - $tempNovo;
+    long trajanje = ($novo.getTimestampMs() - $staro.getTimestampMs()) / 1000 / 60;
+    NalogZaAkciju nalog = new NalogZaAkciju($biljkaId);
+    nalog.setPaljenjeGrejalice(true);
+    insert(nalog);
+    insert(new Notifikacija($biljkaId,
+        "ALARM: Nagli pad temperature - pad od " + String.format("%.1f", pad) + "C u " + trajanje + " minuta! Grejalica upaljena.",
+        "ALARM"));
+end
+
+rule "Kvar senzora vlage"
+    salience 100
+    no-loop true
+when
+    $biljka : Biljka( $biljkaId : id )
+    $nalog : NalogZaAkciju( biljkaId == $biljkaId, blokiranoZalivanje != true )
+    accumulate(
+        $o : SenzorskoOcitavanje(
+            biljkaId == $biljkaId
+        ) over window:time(2m);
+        $ocitavanja : collectList($o);
+        $ocitavanja.size() >= 2
+    )
+    eval( brojOscilacija($ocitavanja) > 3 )
+then
+    modify($nalog) {
+        setBlokiranoZalivanje(true)
+    };
+    insert(new Notifikacija($biljkaId,
+        "KVAR SENZORA: Detektovane oscilacije vlage u 2 minuta. Zalivanje blokirano.",
+        "ALARM"));
+end
+
+function int brojOscilacija(java.util.List ocitavanja) {
+    int count = 0;
+    for (int i = 1; i < ocitavanja.size(); i++) {
+        com.ftn.model.SenzorskoOcitavanje prethodno = (com.ftn.model.SenzorskoOcitavanje) ocitavanja.get(i - 1);
+        com.ftn.model.SenzorskoOcitavanje trenutno = (com.ftn.model.SenzorskoOcitavanje) ocitavanja.get(i);
+        double razlika = Math.abs(trenutno.getVlaznostZemljista() - prethodno.getVlaznostZemljista());
+        if (razlika > 30) {
+            count++;
+        }
+    }
+    return count;
+}

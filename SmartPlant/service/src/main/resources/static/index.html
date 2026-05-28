@@ -36,23 +36,72 @@
             font-size: 2rem;
         }
 
+        .tabs {
+            max-width: 1100px;
+            margin: 30px auto 0;
+            padding: 0 20px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            background-color: #c8e6c9;
+            color: #2e7d32;
+            transition: background-color 0.2s;
+        }
+
+        .tab-btn.active {
+            background-color: white;
+            color: #1b5e20;
+        }
+
+        .tab-btn:hover:not(.active) {
+            background-color: #a5d6a7;
+        }
+
         .container {
             max-width: 1100px;
-            margin: 40px auto;
-            padding: 0 20px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .grid-2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 30px;
+            margin-top: 0;
         }
 
         .card {
+            background: white;
+            border-radius: 0 12px 12px 12px;
+            padding: 28px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-inner {
             background: white;
             border-radius: 12px;
             padding: 28px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
-        .card h2 {
+        .card h2,
+        .card-inner h2 {
             font-size: 1.1rem;
             font-weight: 600;
             color: #2e7d32;
@@ -112,13 +161,28 @@
             cursor: not-allowed;
         }
 
-        .results-panel {
-            grid-column: 1 / -1;
-            display: none;
+        .biljke-lista {
+            margin-top: 20px;
         }
 
-        .results-panel.visible {
-            display: block;
+        .biljka-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: #f1f8e9;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .biljka-item .tip-badge {
+            background: #2e7d32;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
         }
 
         .results-grid {
@@ -144,7 +208,7 @@
             letter-spacing: 0.5px;
         }
 
-        .result-box .item {
+        .result-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -153,7 +217,7 @@
             font-size: 0.88rem;
         }
 
-        .result-box .item:last-child {
+        .result-item:last-child {
             border-bottom: none;
         }
 
@@ -172,11 +236,6 @@
         .badge-false {
             background-color: #e8f5e9;
             color: #2e7d32;
-        }
-
-        .badge-null {
-            background-color: #f5f5f5;
-            color: #999;
         }
 
         .notifikacije-lista {
@@ -216,22 +275,48 @@
             flex-shrink: 0;
         }
 
+        .success-msg {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
         .error-msg {
             background-color: #ffebee;
             color: #c62828;
             padding: 12px 16px;
             border-radius: 8px;
             margin-top: 12px;
-            display: none;
             font-size: 0.9rem;
         }
 
-        .loader {
+        .hidden {
             display: none;
+        }
+
+        .loader {
             text-align: center;
             padding: 20px;
             color: #2e7d32;
             font-size: 0.95rem;
+        }
+
+        .dijagnoza-result {
+            margin-top: 20px;
+        }
+
+        .dijagnoza-empty {
+            color: #999;
+            font-size: 0.9rem;
+            padding: 12px 0;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
         }
     </style>
 </head>
@@ -243,88 +328,169 @@
         <h1>SmartPlant - Sistem za automatizovanu negu biljaka</h1>
     </header>
 
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-biljke')">🪴 Registracija biljke</button>
+        <button class="tab-btn" onclick="switchTab('tab-analiza')">📡 Senzorska analiza</button>
+        <button class="tab-btn" onclick="switchTab('tab-dijagnostika')">🔬 Dijagnostika</button>
+    </div>
+
     <div class="container">
-        <div class="card">
-            <h2>Podaci o biljci</h2>
-            <div class="form-group">
-                <label>ID Biljke</label>
-                <input type="number" id="biljkaId" value="1" min="1">
-            </div>
-            <div class="form-group">
-                <label>Naziv biljke</label>
-                <input type="text" id="naziv" value="Moja Orhideja">
-            </div>
-            <div class="form-group">
-                <label>Tip biljke</label>
-                <select id="tipBiljke">
-                    <option value="ORHIDEJA">Orhideja</option>
-                    <option value="KAKTUS">Kaktus</option>
-                    <option value="FIKUS">Fikus</option>
-                    <option value="PAPRAT">Paprat</option>
-                    <option value="RUZA">Ruža</option>
-                </select>
-            </div>
-        </div>
 
-        <div class="card">
-            <h2>Senzorska očitavanja</h2>
-            <div class="form-group">
-                <label>Vlažnost zemljišta (%)</label>
-                <input type="number" id="vlaznost" value="12" min="0" max="100">
-            </div>
-            <div class="form-group">
-                <label>Temperatura (°C)</label>
-                <input type="number" id="temperatura" value="16" step="0.1">
-            </div>
-            <div class="form-group">
-                <label>Svetlost (lux)</label>
-                <input type="number" id="svetlost" value="800" min="0">
-            </div>
-            <div class="form-group">
-                <label>Nivo rezervoara (%)</label>
-                <input type="number" id="rezervoar" value="50" min="0" max="100">
-            </div>
-            <button class="btn" id="btnAnaliziraj" onclick="analiziraj()">Pošalji u Drools Engine</button>
-            <div class="error-msg" id="errorMsg"></div>
-        </div>
-
-        <div class="results-panel" id="resultsPanel">
-            <div class="card">
-                <h2>Rezultati analize</h2>
-                <div class="loader" id="loader">Engine procesira pravila...</div>
-                <div id="resultsContent">
-                    <div class="results-grid">
-                        <div class="result-box">
-                            <h3>Nivo 1 - Alarmi</h3>
-                            <div id="alarmContent"></div>
-                        </div>
-                        <div class="result-box">
-                            <h3>Nivo 2 - Dijagnoza</h3>
-                            <div id="dijagnozaContent"></div>
-                        </div>
-                        <div class="result-box">
-                            <h3>Nivo 3 - Akcije</h3>
-                            <div id="akcijeContent"></div>
-                        </div>
+        <div id="tab-biljke" class="tab-content active">
+            <div class="grid-2">
+                <div class="card">
+                    <h2>Registruj novu biljku</h2>
+                    <div class="form-group">
+                        <label>ID Biljke</label>
+                        <input type="number" id="reg-biljkaId" value="1" min="1">
                     </div>
-                    <div class="result-box">
-                        <h3>🔔 Notifikacije</h3>
-                        <ul class="notifikacije-lista" id="notifikacijeContent"></ul>
+                    <div class="form-group">
+                        <label>Naziv biljke</label>
+                        <input type="text" id="reg-naziv" value="Moja Orhideja">
+                    </div>
+                    <div class="form-group">
+                        <label>Tip biljke</label>
+                        <select id="reg-tip">
+                            <option value="ORHIDEJA">Orhideja</option>
+                            <option value="KAKTUS">Kaktus</option>
+                            <option value="FIKUS">Fikus</option>
+                            <option value="PAPRAT">Paprat</option>
+                            <option value="RUZA">Ruža</option>
+                        </select>
+                    </div>
+                    <button class="btn" id="btn-registruj" onclick="registrujBiljku()">Registruj biljku</button>
+                    <div id="reg-feedback" class="hidden"></div>
+                </div>
+
+                <div class="card">
+                    <h2>Registrovane biljke</h2>
+                    <div id="biljke-lista">
+                        <p class="dijagnoza-empty">Nema registrovanih biljaka.</p>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div id="tab-analiza" class="tab-content">
+            <div class="grid-2">
+                <div class="card">
+                    <h2>Senzorsko očitavanje</h2>
+                    <div class="form-group">
+                        <label>Biljka</label>
+                        <select id="an-biljkaId"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Vlažnost zemljišta (%)</label>
+                        <input type="number" id="an-vlaznost" value="12" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Vlažnost vazduha (%)</label>
+                        <input type="number" id="an-vlaznostVazduha" value="35" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Temperatura (°C)</label>
+                        <input type="number" id="an-temperatura" value="16" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Svetlost (lux)</label>
+                        <input type="number" id="an-svetlost" value="800" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Nivo rezervoara (%)</label>
+                        <input type="number" id="an-rezervoar" value="50" min="0" max="100">
+                    </div>
+                    <button class="btn" id="btn-analiziraj" onclick="pokreniAnalizu()">Pošalji u Drools Engine</button>
+                    <div id="an-error" class="hidden error-msg"></div>
+                </div>
+
+                <div class="card" id="an-results-card">
+                    <h2>Rezultati analize</h2>
+                    <div id="an-loader" class="loader hidden">Engine procesira pravila...</div>
+                    <div id="an-results" class="hidden">
+                        <div class="results-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 20px;">
+                            <div class="result-box">
+                                <h3>Alarmi</h3>
+                                <div id="an-alarmi"></div>
+                            </div>
+                            <div class="result-box">
+                                <h3>Rizici</h3>
+                                <div id="an-rizici"></div>
+                            </div>
+                            <div class="result-box">
+                                <h3>Akcije</h3>
+                                <div id="an-akcije"></div>
+                            </div>
+                        </div>
+                        <div class="result-box">
+                            <h3>🔔 Notifikacije</h3>
+                            <ul class="notifikacije-lista" id="an-notifikacije"></ul>
+                        </div>
+                    </div>
+                    <p id="an-placeholder" class="dijagnoza-empty">Pošalji očitavanje da vidiš rezultate.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-dijagnostika" class="tab-content">
+            <div class="grid-2">
+                <div class="card">
+                    <h2>Dijagnostički upit</h2>
+                    <div class="form-group">
+                        <label>Biljka</label>
+                        <select id="dij-biljkaId"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Simptom</label>
+                        <select id="dij-simptom" onchange="toggleVizuelni()">
+                            <option value="ZUTI_LISTOVI">Žuti listovi</option>
+                            <option value="TRULEZ_KORENA">Trulež korena</option>
+                            <option value="SUNCHANICA">Sunčanica</option>
+                            <option value="PEPELNICA">Pepelnica</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="vizuelni-group" style="display:none;">
+                        <label>Vizuelni simptom</label>
+                        <select id="dij-vizuelni">
+                            <option value="BELI_PRAH">Beli prah na listovima</option>
+                        </select>
+                    </div>
+                    <button class="btn" id="btn-dijagnoza" onclick="pokreniDijagnostiku()">Pokreni dijagnostiku</button>
+                    <div id="dij-error" class="hidden error-msg"></div>
+                </div>
+
+                <div class="card">
+                    <h2>Rezultat dijagnostike</h2>
+                    <div id="dij-loader" class="loader hidden">Backward chaining rezonovanje u toku...</div>
+                    <div id="dij-results" class="hidden">
+                        <ul class="notifikacije-lista" id="dij-notifikacije"></ul>
+                    </div>
+                    <p id="dij-placeholder" class="dijagnoza-empty">Pokreni dijagnostički upit da vidiš rezultat.</p>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        function badge(value) {
-            if (value === true) return '<span class="badge badge-true">DA</span>';
-            if (value === false) return '<span class="badge badge-false">NE</span>';
-            return '<span class="badge badge-null">-</span>';
+        const state = { biljke: [] };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+            if (tabId === 'tab-analiza' || tabId === 'tab-dijagnostika') {
+                osveziBiljkeSelekte();
+            }
         }
 
-        function item(label, value) {
-            return '<div class="item"><span>' + label + '</span>' + badge(value) + '</div>';
+        function badge(value) {
+            if (value === true) return '<span class="badge badge-true">DA</span>';
+            return '<span class="badge badge-false">NE</span>';
+        }
+
+        function resultItem(label, value) {
+            return '<div class="result-item"><span>' + label + '</span>' + badge(value) + '</div>';
         }
 
         function notifIcon(prioritet) {
@@ -333,27 +499,136 @@
             return '🔵';
         }
 
-        async function analiziraj() {
-            const btn = document.getElementById('btnAnaliziraj');
-            const errorMsg = document.getElementById('errorMsg');
-            const resultsPanel = document.getElementById('resultsPanel');
-            const loader = document.getElementById('loader');
-            const resultsContent = document.getElementById('resultsContent');
+        function renderNotifikacije(lista, elId) {
+            const el = document.getElementById(elId);
+            el.innerHTML = '';
+            if (!lista || lista.length === 0) {
+                el.innerHTML = '<li style="color:#999; font-size:0.9rem; list-style:none;">Nema notifikacija.</li>';
+                return;
+            }
+            lista.forEach(n => {
+                el.innerHTML += '<li class="notif-' + n.prioritet + '">' +
+                    '<span class="notif-icon">' + notifIcon(n.prioritet) + '</span>' +
+                    '<span>' + n.poruka + '</span></li>';
+            });
+        }
 
-            errorMsg.style.display = 'none';
+        function osveziBiljkeSelekte() {
+            const anSelect = document.getElementById('an-biljkaId');
+            const dijSelect = document.getElementById('dij-biljkaId');
+            [anSelect, dijSelect].forEach(sel => {
+                const trenutni = sel.value;
+                sel.innerHTML = '';
+                if (state.biljke.length === 0) {
+                    sel.innerHTML = '<option value="">-- Nema registrovanih biljaka --</option>';
+                } else {
+                    state.biljke.forEach(b => {
+                        const opt = document.createElement('option');
+                        opt.value = b.id;
+                        opt.textContent = b.naziv + ' (' + b.tipBiljke + ')';
+                        sel.appendChild(opt);
+                    });
+                    if (trenutni) sel.value = trenutni;
+                }
+            });
+        }
+
+        function renderBiljkeLista() {
+            const el = document.getElementById('biljke-lista');
+            if (state.biljke.length === 0) {
+                el.innerHTML = '<p class="dijagnoza-empty">Nema registrovanih biljaka.</p>';
+                return;
+            }
+            el.innerHTML = state.biljke.map(b =>
+                '<div class="biljka-item">' +
+                '<span><strong>' + b.naziv + '</strong> (ID: ' + b.id + ')</span>' +
+                '<span class="tip-badge">' + b.tipBiljke + '</span>' +
+                '</div>'
+            ).join('');
+        }
+
+        function toggleVizuelni() {
+            const simptom = document.getElementById('dij-simptom').value;
+            const group = document.getElementById('vizuelni-group');
+            group.style.display = simptom === 'PEPELNICA' ? 'block' : 'none';
+        }
+
+        async function registrujBiljku() {
+            const btn = document.getElementById('btn-registruj');
+            const feedback = document.getElementById('reg-feedback');
             btn.disabled = true;
-            resultsPanel.classList.add('visible');
-            loader.style.display = 'block';
-            resultsContent.style.display = 'none';
+            feedback.className = 'hidden';
 
             const payload = {
-                biljkaId: parseInt(document.getElementById('biljkaId').value),
-                naziv: document.getElementById('naziv').value,
-                tipBiljke: document.getElementById('tipBiljke').value,
-                vlaznostZemljista: parseFloat(document.getElementById('vlaznost').value),
-                temperatura: parseFloat(document.getElementById('temperatura').value),
-                svetlost: parseFloat(document.getElementById('svetlost').value),
-                nivoRezervoara: parseFloat(document.getElementById('rezervoar').value)
+                biljkaId: parseInt(document.getElementById('reg-biljkaId').value),
+                naziv: document.getElementById('reg-naziv').value.trim(),
+                tipBiljke: document.getElementById('reg-tip').value
+            };
+
+            if (!payload.naziv) {
+                feedback.textContent = 'Naziv biljke ne može biti prazan.';
+                feedback.className = 'error-msg';
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/smartplant/biljka', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Server greška: ' + response.status);
+                const biljka = await response.json();
+                const existing = state.biljke.findIndex(b => b.id === biljka.id);
+                if (existing >= 0) {
+                    state.biljke[existing] = biljka;
+                } else {
+                    state.biljke.push(biljka);
+                }
+                renderBiljkeLista();
+                feedback.textContent = 'Biljka "' + biljka.naziv + '" uspešno registrovana.';
+                feedback.className = 'success-msg';
+            } catch (err) {
+                feedback.textContent = 'Greška: ' + err.message;
+                feedback.className = 'error-msg';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function pokreniAnalizu() {
+            const btn = document.getElementById('btn-analiziraj');
+            const errorEl = document.getElementById('an-error');
+            const loader = document.getElementById('an-loader');
+            const results = document.getElementById('an-results');
+            const placeholder = document.getElementById('an-placeholder');
+
+            const biljkaId = parseInt(document.getElementById('an-biljkaId').value);
+            if (!biljkaId) {
+                errorEl.textContent = 'Registruj biljku pre slanja očitavanja.';
+                errorEl.className = 'error-msg';
+                return;
+            }
+
+            errorEl.className = 'hidden';
+            btn.disabled = true;
+            loader.className = 'loader';
+            results.className = 'hidden';
+            placeholder.className = 'hidden';
+
+            const biljka = state.biljke.find(b => b.id === biljkaId);
+
+            const payload = {
+                biljkaId: biljkaId,
+                naziv: biljka ? biljka.naziv : '',
+                tipBiljke: biljka ? biljka.tipBiljke : '',
+                vlaznostZemljista: parseFloat(document.getElementById('an-vlaznost').value),
+                vlaznostVazduha: parseFloat(document.getElementById('an-vlaznostVazduha').value),
+                temperatura: parseFloat(document.getElementById('an-temperatura').value),
+                svetlost: parseFloat(document.getElementById('an-svetlost').value),
+                nivoRezervoara: parseFloat(document.getElementById('an-rezervoar').value),
+                timestampMs: Date.now()
             };
 
             try {
@@ -362,51 +637,92 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
                 if (!response.ok) throw new Error('Server greška: ' + response.status);
-
                 const data = await response.json();
 
-                document.getElementById('alarmContent').innerHTML =
-                    item('Niska vlaga', data.alarm.niskaVlaga) +
-                    item('Visoka vlaga', data.alarm.visokaVlaga) +
-                    item('Niska temperatura', data.alarm.niskaTemperatura) +
-                    item('Niska svetlost', data.alarm.niskaSvetlost) +
-                    item('Prazan rezervoar', data.alarm.prazanRezervoar);
+                document.getElementById('an-alarmi').innerHTML =
+                    resultItem('Niska vlaga', data.alarm.niskaVlaga) +
+                    resultItem('Visoka vlaga', data.alarm.visokaVlaga) +
+                    resultItem('Niska temperatura', data.alarm.niskaTemperatura) +
+                    resultItem('Niska svetlost', data.alarm.niskaSvetlost) +
+                    resultItem('Prazan rezervoar', data.alarm.prazanRezervoar);
 
-                document.getElementById('dijagnozaContent').innerHTML =
-                    item('Rizik truleži', data.dijagnoza.rizikTrulezi) +
-                    item('Rizik pepelnice', data.dijagnoza.rizikPepelnice) +
-                    item('Rizik crvenog pauka', data.dijagnoza.rizikCrvenogPauka) +
-                    item('Rizik lisnih vaši', data.dijagnoza.rizikLisnihVasi) +
-                    item('Kritično stanje', data.dijagnoza.kriticnoStanje);
+                document.getElementById('an-rizici').innerHTML =
+                    resultItem('Rizik truleži', data.dijagnoza.rizikTrulezi) +
+                    resultItem('Rizik pepelnice', data.dijagnoza.rizikPepelnice) +
+                    resultItem('Rizik crvenog pauka', data.dijagnoza.rizikCrvenogPauka) +
+                    resultItem('Rizik lisnih vaši', data.dijagnoza.rizikLisnihVasi) +
+                    resultItem('Kritično stanje', data.dijagnoza.kriticnoStanje);
 
-                document.getElementById('akcijeContent').innerHTML =
-                    item('Pokretanje pumpe', data.nalogZaAkciju.pokretanjePumpe) +
-                    item('Paljenje grejalice', data.nalogZaAkciju.paljenjeGrejalice) +
-                    item('Paljenje UV lampe', data.nalogZaAkciju.paljenjeUvLampe) +
-                    item('Blokirano zalivanje', data.nalogZaAkciju.blokiranoZalivanje);
+                document.getElementById('an-akcije').innerHTML =
+                    resultItem('Pokretanje pumpe', data.nalogZaAkciju.pokretanjePumpe) +
+                    resultItem('Paljenje grejalice', data.nalogZaAkciju.paljenjeGrejalice) +
+                    resultItem('Paljenje UV lampe', data.nalogZaAkciju.paljenjeUvLampe) +
+                    resultItem('Blokirano zalivanje', data.nalogZaAkciju.blokiranoZalivanje);
 
-                const notifList = document.getElementById('notifikacijeContent');
-                notifList.innerHTML = '';
-                if (data.notifikacije.length === 0) {
-                    notifList.innerHTML = '<li style="color:#999; font-size:0.9rem;">Nema notifikacija.</li>';
-                } else {
-                    data.notifikacije.forEach(n => {
-                        notifList.innerHTML += '<li class="notif-' + n.prioritet + '">' +
-                            '<span class="notif-icon">' + notifIcon(n.prioritet) + '</span>' +
-                            '<span>' + n.poruka + '</span></li>';
-                    });
-                }
+                renderNotifikacije(data.notifikacije, 'an-notifikacije');
 
-                loader.style.display = 'none';
-                resultsContent.style.display = 'block';
-
+                loader.className = 'hidden';
+                results.className = '';
             } catch (err) {
-                loader.style.display = 'none';
-                resultsPanel.classList.remove('visible');
-                errorMsg.textContent = 'Greška: ' + err.message;
-                errorMsg.style.display = 'block';
+                loader.className = 'hidden';
+                placeholder.className = 'dijagnoza-empty';
+                errorEl.textContent = 'Greška: ' + err.message;
+                errorEl.className = 'error-msg';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function pokreniDijagnostiku() {
+            const btn = document.getElementById('btn-dijagnoza');
+            const errorEl = document.getElementById('dij-error');
+            const loader = document.getElementById('dij-loader');
+            const results = document.getElementById('dij-results');
+            const placeholder = document.getElementById('dij-placeholder');
+
+            const biljkaId = parseInt(document.getElementById('dij-biljkaId').value);
+            if (!biljkaId) {
+                errorEl.textContent = 'Registruj biljku pre pokretanja dijagnostike.';
+                errorEl.className = 'error-msg';
+                return;
+            }
+
+            const simptom = document.getElementById('dij-simptom').value;
+            const vizuelniSimptom = simptom === 'PEPELNICA'
+                ? document.getElementById('dij-vizuelni').value
+                : null;
+
+            errorEl.className = 'hidden';
+            btn.disabled = true;
+            loader.className = 'loader';
+            results.className = 'hidden';
+            placeholder.className = 'hidden';
+
+            const payload = {
+                biljkaId: biljkaId,
+                simptom: simptom,
+                vizuelniSimptom: vizuelniSimptom
+            };
+
+            try {
+                const response = await fetch('/api/smartplant/dijagnostika', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error('Server greška: ' + response.status);
+                const notifikacije = await response.json();
+
+                renderNotifikacije(notifikacije, 'dij-notifikacije');
+
+                loader.className = 'hidden';
+                results.className = '';
+            } catch (err) {
+                loader.className = 'hidden';
+                placeholder.className = 'dijagnoza-empty';
+                errorEl.textContent = 'Greška: ' + err.message;
+                errorEl.className = 'error-msg';
             } finally {
                 btn.disabled = false;
             }

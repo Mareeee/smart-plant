@@ -1,0 +1,269 @@
+package com.ftn.sbnz.kjar.rules;
+
+import com.ftn.model.Biljka;
+import com.ftn.model.SenzorskoOcitavanje;
+import com.ftn.model.IstorijaZalivanja;
+import com.ftn.model.DijaganostickiUpit;
+import com.ftn.model.Notifikacija;
+import com.ftn.model.TipBiljke;
+
+function double maxSvetlostZaTip(TipBiljke tip) {
+    switch (tip) {
+        case KAKTUS:   return 80000;
+        case RUZA:     return 40000;
+        case FIKUS:    return 20000;
+        case ORHIDEJA: return 10000;
+        case PAPRAT:   return 5000;
+        default:       return 20000;
+    }
+}
+
+function double maxTempZaTip(TipBiljke tip) {
+    switch (tip) {
+        case KAKTUS:   return 40;
+        case RUZA:     return 30;
+        case FIKUS:    return 30;
+        case ORHIDEJA: return 28;
+        case PAPRAT:   return 26;
+        default:       return 30;
+    }
+}
+
+query imaUslovPrekomernaVlaga(Long biljkaId, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    accumulate(
+        $z : IstorijaZalivanja(
+            biljkaId == $qBiljkaId,
+            eval( nowMs - $z.getTimestampMs() <= 3L * 24L * 60L * 60L * 1000L )
+        );
+        $count : count($z);
+        $count >= 3
+    )
+end
+
+query imaUslovNiskaTemperatura(Long biljkaId, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    $o : SenzorskoOcitavanje(
+        biljkaId == $qBiljkaId,
+        temperatura < 17,
+        $ts : timestampMs,
+        eval( nowMs - $ts <= 3L * 24L * 60L * 60L * 1000L )
+    )
+end
+
+query imaSimptomTrulezKorena(Long biljkaId, long nowMs)
+    imaUslovPrekomernaVlaga(biljkaId, nowMs;)
+    imaUslovNiskaTemperatura(biljkaId, nowMs;)
+end
+
+query imaUslovPrekomernaVlaga48h(Long biljkaId, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    $o : SenzorskoOcitavanje(
+        biljkaId == $qBiljkaId,
+        $ts : timestampMs,
+        eval( nowMs - $ts <= 48L * 60L * 60L * 1000L )
+    )
+end
+
+query imaUslovVisokaTempZaTip(Long biljkaId, TipBiljke tip, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    $o : SenzorskoOcitavanje(
+        biljkaId == $qBiljkaId,
+        $ts : timestampMs,
+        $temp : temperatura,
+        eval( nowMs - $ts <= 2L * 24L * 60L * 60L * 1000L ),
+        eval( $temp > maxTempZaTip(tip) )
+    )
+end
+
+query imaUslovPrekomernavetlost(Long biljkaId, TipBiljke tip, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    $o : SenzorskoOcitavanje(
+        biljkaId == $qBiljkaId,
+        $ts : timestampMs,
+        $svetlost : svetlost,
+        eval( nowMs - $ts <= 2L * 24L * 60L * 60L * 1000L ),
+        eval( $svetlost > 2 * maxSvetlostZaTip(tip) )
+    )
+end
+
+query imaSimptomSunchanica(Long biljkaId, TipBiljke tip, long nowMs)
+    imaUslovPrekomernavetlost(biljkaId, tip, nowMs;)
+    imaUslovVisokaTempZaTip(biljkaId, tip, nowMs;)
+end
+
+query imaRizikPepelnica(Long biljkaId, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    Biljka(
+        id == $qBiljkaId,
+        tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.FIKUS
+    )
+    $o : SenzorskoOcitavanje(
+        biljkaId == $qBiljkaId,
+        $ts : timestampMs,
+        $vlaznostVazduha : vlaznostVazduha,
+        $temp : temperatura,
+        eval( nowMs - $ts <= 24L * 60L * 60L * 1000L ),
+        eval( $vlaznostVazduha < 40 ),
+        eval( $temp >= 15 && $temp <= 28 )
+    )
+end
+
+query imaBolestPepelnica(Long biljkaId, long nowMs, String vizuelniSimptom)
+    imaRizikPepelnica(biljkaId, nowMs;)
+    eval( "BELI_PRAH".equals(vizuelniSimptom) )
+end
+
+query imaUslovDugotrajnaSusa(Long biljkaId, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    accumulate(
+        $z : IstorijaZalivanja(
+            biljkaId == $qBiljkaId,
+            eval( nowMs - $z.getTimestampMs() <= 7L * 24L * 60L * 60L * 1000L )
+        );
+        $count : count($z);
+        $count == 0
+    )
+end
+
+query imaUslovNedovoljnoSvetlo(Long biljkaId, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    $o : SenzorskoOcitavanje(
+        biljkaId == $qBiljkaId,
+        $ts : timestampMs,
+        eval( nowMs - $ts <= 7L * 24L * 60L * 60L * 1000L ),
+        eval( svetlost < 200 )
+    )
+end
+
+query imaRizikCrveniPaukBc(Long biljkaId, long nowMs)
+    $qBiljkaId : Long() from biljkaId
+    $o : SenzorskoOcitavanje(
+        biljkaId == $qBiljkaId,
+        $ts : timestampMs,
+        eval( nowMs - $ts <= 3L * 24L * 60L * 60L * 1000L ),
+        temperatura > 25,
+        vlaznostVazduha < 35
+    )
+end
+
+rule "Dijagnostika trulezi korena"
+    salience 40
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "TRULEZ_KORENA", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    imaSimptomTrulezKorena( $biljkaId, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza: Trulez korena - uzrok je prekomerno zalivanje + niska temperatura. Preporuka: smanjiti zalivanje, povisiti temperaturu iznad 19C.",
+        "ALARM"));
+    retract($upit);
+end
+
+rule "Dijagnostika sunchanice"
+    salience 40
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "SUNCHANICA", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId, $tip : tipBiljke )
+    imaSimptomSunchanica( $biljkaId, $tip, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza: Sunchanica - uzrok je previse direktne svetlosti i visoka temperatura. Preporuka: premestiti biljku ili ugasiti UV lampu.",
+        "ALARM"));
+    retract($upit);
+end
+
+rule "Dijagnostika pepelnice"
+    salience 40
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "PEPELNICA", $vizuelniSimptom : vizuelniSimptom, $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    imaBolestPepelnica( $biljkaId, $nowMs, $vizuelniSimptom; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza: Pepelnica potvrdjena za biljku " + $biljka.getNaziv() + ". Preporuka: tretirati fungicidom na bazi bakra i povecati cirkulaciju vazduha.",
+        "ALARM"));
+    retract($upit);
+end
+
+rule "Dijagnostika zutih listova - trulez korena"
+    salience 39
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    imaSimptomTrulezKorena( $biljkaId, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza zutih listova: Trulez korena. Uzrok: prekomerno zalivanje + niska temperatura. Preporuka: smanjiti zalivanje, povisiti temperaturu iznad 19C.",
+        "ALARM"));
+    retract($upit);
+end
+
+rule "Dijagnostika zutih listova - nedostatak azota"
+    salience 38
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
+    imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza zutih listova: Nedostatak azota. Uzrok: dugotrajna susa i iscrpljenost hraniva. Preporuka: prihranjivanje dusicnim djubrivom i umereno zalivanje.",
+        "ALARM"));
+    retract($upit);
+end
+
+rule "Dijagnostika zutih listova - etiolacija"
+    salience 37
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
+    not imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
+    imaUslovNedovoljnoSvetlo( $biljkaId, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza zutih listova: Etiolacija. Uzrok: dugotrajna nedovoljna osvetljenost. Preporuka: premestiti biljku na svetlije mesto ili upaliti UV lampu.",
+        "ALARM"));
+    retract($upit);
+end
+
+rule "Dijagnostika zutih listova - napad stetocine"
+    salience 36
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
+    not imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
+    not imaUslovNedovoljnoSvetlo( $biljkaId, $nowMs; )
+    imaRizikCrveniPaukBc( $biljkaId, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza zutih listova: Napad stetocine (crveni pauk). Uzrok: visoka temperatura i niska vlaznost vazduha. Preporuka: tretirati akaricidom i povecati vlaznost.",
+        "ALARM"));
+    retract($upit);
+end
+
+rule "Dijagnostika zutih listova - uzrok nepoznat"
+    salience 35
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
+    not imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
+    not imaUslovNedovoljnoSvetlo( $biljkaId, $nowMs; )
+    not imaRizikCrveniPaukBc( $biljkaId, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Dijagnoza zutih listova: Uzrok nije mogao biti automatski utvrden. Preporuka: rucni pregled biljke i konsultacija sa strucnjakom.",
+        "UPOZORENJE"));
+    retract($upit);
+end
