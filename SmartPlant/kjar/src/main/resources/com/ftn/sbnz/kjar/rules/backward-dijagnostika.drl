@@ -147,6 +147,45 @@ query imaRizikCrveniPaukBc(Long biljkaId, long nowMs)
     )
 end
 
+query uzrokujeTrulezPrekomernomVlagom(Long biljkaId, long nowMs)
+    imaUslovPrekomernaVlaga(biljkaId, nowMs;)
+end
+
+query uzrokujeTrulezNiskomTemp(Long biljkaId, long nowMs)
+    imaUslovNiskaTemperatura(biljkaId, nowMs;)
+end
+
+query uzrokujeTrulez(Long biljkaId, long nowMs)
+    uzrokujeTrulezPrekomernomVlagom(biljkaId, nowMs;)
+    uzrokujeTrulezNiskomTemp(biljkaId, nowMs;)
+end
+
+query zutiListoviUzrokovaniTrulezi(Long biljkaId, long nowMs)
+    uzrokujeTrulez(biljkaId, nowMs;)
+end
+
+query zutiListoviUzrokovaniSusom(Long biljkaId, long nowMs)
+    imaUslovDugotrajnaSusa(biljkaId, nowMs;)
+end
+
+query zutiListoviUzrokovaniTamom(Long biljkaId, long nowMs)
+    imaUslovNedovoljnoSvetlo(biljkaId, nowMs;)
+end
+
+rule "Dijagnostika zutih listova - rekurzivni uzrok trulez"
+    salience 41
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
+    $biljka : Biljka( id == $biljkaId )
+    zutiListoviUzrokovaniTrulezi( $biljkaId, $nowMs; )
+then
+    insert(new Notifikacija($biljkaId,
+        "Rekurzivna dijagnoza za biljku " + $biljka.getNaziv() + ": ZUTI_LISTOVI -> TRULEZ_KORENA -> PREKOMERNA_VLAGA + NISKA_TEMPERATURA.",
+        "ALARM"));
+    retract($upit);
+end
+
 rule "Dijagnostika trulezi korena"
     salience 40
     no-loop true
