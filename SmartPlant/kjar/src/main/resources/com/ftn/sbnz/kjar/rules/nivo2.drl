@@ -12,7 +12,11 @@ rule "Rizik od pepelnice"
     salience 70
     no-loop true
 when
-    $biljka : Biljka( $biljkaId : id, tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.FIKUS )
+    $biljka : Biljka( $biljkaId : id,
+        tipBiljke == TipBiljke.RUZA ||
+        tipBiljke == TipBiljke.FIKUS ||
+        tipBiljke == TipBiljke.MONSTERA ||
+        tipBiljke == TipBiljke.DRACENA )
     $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura, $vlaznostVazduha : vlaznostVazduha )
     $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikPepelnice != true )
     eval( $temp >= 15 && $temp <= 28 && $vlaznostVazduha < 40 )
@@ -67,7 +71,11 @@ rule "Rizik od lisnih vasi"
     salience 70
     no-loop true
 when
-    $biljka : Biljka( $biljkaId : id, tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.ORHIDEJA )
+    $biljka : Biljka( $biljkaId : id,
+        tipBiljke == TipBiljke.RUZA ||
+        tipBiljke == TipBiljke.ORHIDEJA ||
+        tipBiljke == TipBiljke.MONSTERA ||
+        tipBiljke == TipBiljke.SPATIFILUM )
     $ocitavanje : SenzorskoOcitavanje( biljkaId == $biljkaId, $temp : temperatura )
     $alarm : Alarm( biljkaId == $biljkaId, niskaSvetlost == true )
     $dijagnoza : Dijagnoza( biljkaId == $biljkaId, rizikLisnihVasi != true )

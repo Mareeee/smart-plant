@@ -20,7 +20,12 @@ public class TemplateService {
             { "ORHIDEJA", 40.0, 70.0, 18.0, 1000.0 },
             { "PAPRAT", 50.0, 80.0, 16.0, 300.0 },
             { "FIKUS", 30.0, 60.0, 16.0, 2000.0 },
-            { "RUZA", 35.0, 65.0, 10.0, 4000.0 }
+            { "RUZA", 35.0, 65.0, 10.0, 4000.0 },
+            { "MONSTERA", 40.0, 70.0, 18.0, 1500.0 },
+            { "SANSEVERIJA", 10.0, 30.0, 15.0, 800.0 },
+            { "ALOE_VERA", 15.0, 35.0, 16.0, 4000.0 },
+            { "SPATIFILUM", 50.0, 75.0, 18.0, 1000.0 },
+            { "DRACENA", 30.0, 55.0, 16.0, 1200.0 }
     };
 
     public String kompajlirajTemplate() {

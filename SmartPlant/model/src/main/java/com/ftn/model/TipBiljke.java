@@ -5,5 +5,10 @@ public enum TipBiljke {
     FIKUS,
     ORHIDEJA,
     PAPRAT,
-    RUZA
+    RUZA,
+    MONSTERA,
+    SANSEVERIJA,
+    ALOE_VERA,
+    SPATIFILUM,
+    DRACENA
 }
