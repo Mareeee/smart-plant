@@ -85,7 +85,12 @@ public class DroolsService {
     public List<Notifikacija> analizirajDijagnozu(DijaganostickiUpit upit, Biljka biljka,
             List<IstorijaZalivanja> istorijaZalivanja, List<SenzorskoOcitavanje> istorijskaOcitavanja) {
 
-        KieSession kieSession = kieBase.newKieSession();
+        KieSessionConfiguration sessionConfig = KieServices.Factory.get().newKieSessionConfiguration();
+        sessionConfig.setOption(ClockTypeOption.get("pseudo"));
+        KieSession kieSession = kieBase.newKieSession(sessionConfig, null);
+
+        SessionPseudoClock clock = kieSession.getSessionClock();
+        clock.advanceTime(upit.getNowMs(), TimeUnit.MILLISECONDS);
 
         try {
             kieSession.insert(biljka);
