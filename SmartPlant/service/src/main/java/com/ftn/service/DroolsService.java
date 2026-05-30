@@ -9,13 +9,7 @@ import com.ftn.model.NalogZaAkciju;
 import com.ftn.model.Notifikacija;
 import com.ftn.model.SenzorskoOcitavanje;
 import org.kie.api.KieBase;
-import org.kie.api.KieBaseConfiguration;
 import org.kie.api.KieServices;
-import org.kie.api.builder.KieBuilder;
-import org.kie.api.builder.KieFileSystem;
-import org.kie.api.builder.KieModule;
-import org.kie.api.conf.EventProcessingOption;
-import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.KieSessionConfiguration;
 import org.kie.api.runtime.conf.ClockTypeOption;
@@ -31,50 +25,12 @@ import java.util.concurrent.TimeUnit;
 public class DroolsService {
 
     @Autowired
-    private TemplateService templateService;
+    private KieBase kieBase;
 
     public RezultatAnalize analiziraj(SenzorskoOcitavanje ocitavanje, Biljka biljka,
             List<IstorijaZalivanja> istorijaZalivanja, long timestampMs) {
-        KieServices kieServices = KieServices.Factory.get();
-        KieFileSystem kieFileSystem = kieServices.newKieFileSystem();
 
-        kieFileSystem.write(
-                "src/main/resources/com/ftn/sbnz/kjar/rules/nivo0.drl",
-                kieServices.getResources().newClassPathResource(
-                        "com/ftn/sbnz/kjar/rules/nivo0.drl"));
-        kieFileSystem.write(
-                "src/main/resources/com/ftn/sbnz/kjar/rules/nivo1.drl",
-                kieServices.getResources().newClassPathResource(
-                        "com/ftn/sbnz/kjar/rules/nivo1.drl"));
-        kieFileSystem.write(
-                "src/main/resources/com/ftn/sbnz/kjar/rules/nivo2.drl",
-                kieServices.getResources().newClassPathResource(
-                        "com/ftn/sbnz/kjar/rules/nivo2.drl"));
-        kieFileSystem.write(
-                "src/main/resources/com/ftn/sbnz/kjar/rules/nivo3.drl",
-                kieServices.getResources().newClassPathResource(
-                        "com/ftn/sbnz/kjar/rules/nivo3.drl"));
-        kieFileSystem.write(
-                "src/main/resources/com/ftn/sbnz/kjar/rules/cep-pravila.drl",
-                kieServices.getResources().newClassPathResource(
-                        "com/ftn/sbnz/kjar/rules/cep-pravila.drl"));
-
-        String generisaniDrl = templateService.kompajlirajTemplate();
-        kieFileSystem.write(
-                "src/main/resources/com/ftn/sbnz/kjar/rules/mikroklimatski-uslovi-generated.drl",
-                kieServices.getResources().newByteArrayResource(
-                        generisaniDrl.getBytes()));
-
-        KieBuilder kieBuilder = kieServices.newKieBuilder(kieFileSystem);
-        kieBuilder.buildAll();
-        KieModule kieModule = kieBuilder.getKieModule();
-        KieContainer kieContainer = kieServices.newKieContainer(kieModule.getReleaseId());
-
-        KieBaseConfiguration kieBaseConfig = kieServices.newKieBaseConfiguration();
-        kieBaseConfig.setOption(EventProcessingOption.STREAM);
-        KieBase kieBase = kieContainer.newKieBase(kieBaseConfig);
-
-        KieSessionConfiguration sessionConfig = kieServices.newKieSessionConfiguration();
+        KieSessionConfiguration sessionConfig = KieServices.Factory.get().newKieSessionConfiguration();
         sessionConfig.setOption(ClockTypeOption.get("pseudo"));
         KieSession kieSession = kieBase.newKieSession(sessionConfig, null);
 
@@ -128,22 +84,6 @@ public class DroolsService {
 
     public List<Notifikacija> analizirajDijagnozu(DijaganostickiUpit upit, Biljka biljka,
             List<IstorijaZalivanja> istorijaZalivanja, List<SenzorskoOcitavanje> istorijskaOcitavanja) {
-        KieServices kieServices = KieServices.Factory.get();
-        KieFileSystem kieFileSystem = kieServices.newKieFileSystem();
-
-        kieFileSystem.write(
-                "src/main/resources/com/ftn/sbnz/kjar/rules/backward-dijagnostika.drl",
-                kieServices.getResources().newClassPathResource(
-                        "com/ftn/sbnz/kjar/rules/backward-dijagnostika.drl"));
-
-        KieBuilder kieBuilder = kieServices.newKieBuilder(kieFileSystem);
-        kieBuilder.buildAll();
-        KieModule kieModule = kieBuilder.getKieModule();
-        KieContainer kieContainer = kieServices.newKieContainer(kieModule.getReleaseId());
-
-        KieBaseConfiguration kieBaseConfig = kieServices.newKieBaseConfiguration();
-        kieBaseConfig.setOption(EventProcessingOption.STREAM);
-        KieBase kieBase = kieContainer.newKieBase(kieBaseConfig);
 
         KieSession kieSession = kieBase.newKieSession();
 
@@ -158,8 +98,8 @@ public class DroolsService {
             }
 
             if (istorijskaOcitavanja != null) {
-                for (SenzorskoOcitavanje ocitavanje : istorijskaOcitavanja) {
-                    kieSession.insert(ocitavanje);
+                for (SenzorskoOcitavanje o : istorijskaOcitavanja) {
+                    kieSession.insert(o);
                 }
             }
 

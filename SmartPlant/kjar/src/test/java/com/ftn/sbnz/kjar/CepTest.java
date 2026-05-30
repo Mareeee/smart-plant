@@ -5,6 +5,7 @@ import com.ftn.model.NalogZaAkciju;
 import com.ftn.model.Notifikacija;
 import com.ftn.model.SenzorskoOcitavanje;
 import com.ftn.model.TipBiljke;
+import org.drools.core.time.SessionPseudoClock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,7 +20,6 @@ import org.kie.api.runtime.KieContainer;
 import org.kie.api.runtime.KieSession;
 import org.kie.api.runtime.KieSessionConfiguration;
 import org.kie.api.runtime.conf.ClockTypeOption;
-import org.kie.api.time.SessionPseudoClock;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;

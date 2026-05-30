@@ -5,304 +5,181 @@ import com.ftn.model.SenzorskoOcitavanje;
 import com.ftn.model.IstorijaZalivanja;
 import com.ftn.model.DijaganostickiUpit;
 import com.ftn.model.Notifikacija;
+import com.ftn.model.UzrocnaVeza;
 import com.ftn.model.TipBiljke;
 
-function double maxSvetlostZaTip(TipBiljke tip) {
-    switch (tip) {
-        case KAKTUS:   return 80000;
-        case RUZA:     return 40000;
-        case FIKUS:    return 20000;
-        case ORHIDEJA: return 10000;
-        case PAPRAT:   return 5000;
-        default:       return 20000;
-    }
-}
+query uzrokSimptoma( String trazeniUzrok, String polazniSimptom )
+    UzrocnaVeza( trazeniUzrok, polazniSimptom; )
+    or
+    ( UzrocnaVeza( z, polazniSimptom; ) and uzrokSimptoma( trazeniUzrok, z; ) )
+end
 
-function double maxTempZaTip(TipBiljke tip) {
-    switch (tip) {
-        case KAKTUS:   return 40;
-        case RUZA:     return 30;
-        case FIKUS:    return 30;
-        case ORHIDEJA: return 28;
-        case PAPRAT:   return 26;
-        default:       return 30;
-    }
-}
+rule "Inicijalizacija stabla uzrocnosti"
+    salience 1000
+    no-loop true
+when
+    not UzrocnaVeza()
+then
+    insert(new UzrocnaVeza("TRULEZ_KORENA",      "ZUTI_LISTOVI"));
+    insert(new UzrocnaVeza("NEDOSTATAK_AZOTA",   "ZUTI_LISTOVI"));
+    insert(new UzrocnaVeza("ETIOLACIJA",         "ZUTI_LISTOVI"));
+    insert(new UzrocnaVeza("NAPAD_STETOCINE",    "ZUTI_LISTOVI"));
+    insert(new UzrocnaVeza("PREKOMERNA_VLAGA",   "TRULEZ_KORENA"));
+    insert(new UzrocnaVeza("NISKA_TEMPERATURA",  "TRULEZ_KORENA"));
+    insert(new UzrocnaVeza("DUGOTRAJNA_SUSA",    "NEDOSTATAK_AZOTA"));
+    insert(new UzrocnaVeza("NEDOVOLJNO_SVETLO",  "ETIOLACIJA"));
+    insert(new UzrocnaVeza("VISOKA_TEMP",        "NAPAD_STETOCINE"));
+    insert(new UzrocnaVeza("NISKA_VLAGA_VAZDUHA","NAPAD_STETOCINE"));
+    insert(new UzrocnaVeza("PREKOMERNA_SVETLOST","SUNCHANICA"));
+    insert(new UzrocnaVeza("VISOKA_TEMP",        "SUNCHANICA"));
+    insert(new UzrocnaVeza("NISKA_VLAGA_VAZDUHA","PEPELNICA"));
+    insert(new UzrocnaVeza("UMERENA_TEMPERATURA","PEPELNICA"));
+end
 
-query imaUslovPrekomernaVlaga(Long biljkaId, long nowMs)
-    $qBiljkaId : Long() from biljkaId
+rule "Potvrdi uslov PREKOMERNA_VLAGA"
+    salience 900
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $nowMs : nowMs )
     accumulate(
         $z : IstorijaZalivanja(
-            biljkaId == $qBiljkaId,
-            eval( nowMs - $z.getTimestampMs() <= 3L * 24L * 60L * 60L * 1000L )
+            biljkaId == $biljkaId,
+            eval( $nowMs - $z.getTimestampMs() <= 3L * 24L * 60L * 60L * 1000L )
         );
         $count : count($z);
         $count >= 3
     )
+    not UzrocnaVeza( "PREKOMERNA_VLAGA_OK", "POTVRDJENO"; )
+then
+    insert(new UzrocnaVeza("PREKOMERNA_VLAGA_OK", "POTVRDJENO"));
+    insert(new UzrocnaVeza("PREKOMERNA_VLAGA", "AKTIVAN_" + $biljkaId));
 end
 
-query imaUslovNiskaTemperatura(Long biljkaId, long nowMs)
-    $qBiljkaId : Long() from biljkaId
+rule "Potvrdi uslov NISKA_TEMPERATURA"
+    salience 900
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $nowMs : nowMs )
     $o : SenzorskoOcitavanje(
-        biljkaId == $qBiljkaId,
+        biljkaId == $biljkaId,
         temperatura < 17,
         $ts : timestampMs,
-        eval( nowMs - $ts <= 3L * 24L * 60L * 60L * 1000L )
+        eval( $nowMs - $ts <= 3L * 24L * 60L * 60L * 1000L )
     )
+    not UzrocnaVeza( "NISKA_TEMPERATURA_OK", "POTVRDJENO"; )
+then
+    insert(new UzrocnaVeza("NISKA_TEMPERATURA_OK", "POTVRDJENO"));
+    insert(new UzrocnaVeza("NISKA_TEMPERATURA", "AKTIVAN_" + $biljkaId));
 end
 
-query imaSimptomTrulezKorena(Long biljkaId, long nowMs)
-    imaUslovPrekomernaVlaga(biljkaId, nowMs;)
-    imaUslovNiskaTemperatura(biljkaId, nowMs;)
-end
-
-query imaUslovPrekomernaVlaga48h(Long biljkaId, long nowMs)
-    $qBiljkaId : Long() from biljkaId
-    $o : SenzorskoOcitavanje(
-        biljkaId == $qBiljkaId,
-        $ts : timestampMs,
-        eval( nowMs - $ts <= 48L * 60L * 60L * 1000L )
-    )
-end
-
-query imaUslovVisokaTempZaTip(Long biljkaId, TipBiljke tip, long nowMs)
-    $qBiljkaId : Long() from biljkaId
-    $o : SenzorskoOcitavanje(
-        biljkaId == $qBiljkaId,
-        $ts : timestampMs,
-        $temp : temperatura,
-        eval( nowMs - $ts <= 2L * 24L * 60L * 60L * 1000L ),
-        eval( $temp > maxTempZaTip(tip) )
-    )
-end
-
-query imaUslovPrekomernavetlost(Long biljkaId, TipBiljke tip, long nowMs)
-    $qBiljkaId : Long() from biljkaId
-    $o : SenzorskoOcitavanje(
-        biljkaId == $qBiljkaId,
-        $ts : timestampMs,
-        $svetlost : svetlost,
-        eval( nowMs - $ts <= 2L * 24L * 60L * 60L * 1000L ),
-        eval( $svetlost > 2 * maxSvetlostZaTip(tip) )
-    )
-end
-
-query imaSimptomSunchanica(Long biljkaId, TipBiljke tip, long nowMs)
-    imaUslovPrekomernavetlost(biljkaId, tip, nowMs;)
-    imaUslovVisokaTempZaTip(biljkaId, tip, nowMs;)
-end
-
-query imaRizikPepelnica(Long biljkaId, long nowMs)
-    $qBiljkaId : Long() from biljkaId
-    Biljka(
-        id == $qBiljkaId,
-        tipBiljke == TipBiljke.RUZA || tipBiljke == TipBiljke.FIKUS
-    )
-    $o : SenzorskoOcitavanje(
-        biljkaId == $qBiljkaId,
-        $ts : timestampMs,
-        $vlaznostVazduha : vlaznostVazduha,
-        $temp : temperatura,
-        eval( nowMs - $ts <= 24L * 60L * 60L * 1000L ),
-        eval( $vlaznostVazduha < 40 ),
-        eval( $temp >= 15 && $temp <= 28 )
-    )
-end
-
-query imaBolestPepelnica(Long biljkaId, long nowMs, String vizuelniSimptom)
-    imaRizikPepelnica(biljkaId, nowMs;)
-    eval( "BELI_PRAH".equals(vizuelniSimptom) )
-end
-
-query imaUslovDugotrajnaSusa(Long biljkaId, long nowMs)
-    $qBiljkaId : Long() from biljkaId
+rule "Potvrdi uslov DUGOTRAJNA_SUSA"
+    salience 900
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $nowMs : nowMs )
     accumulate(
         $z : IstorijaZalivanja(
-            biljkaId == $qBiljkaId,
-            eval( nowMs - $z.getTimestampMs() <= 7L * 24L * 60L * 60L * 1000L )
+            biljkaId == $biljkaId,
+            eval( $nowMs - $z.getTimestampMs() <= 7L * 24L * 60L * 60L * 1000L )
         );
         $count : count($z);
         $count == 0
     )
+    not UzrocnaVeza( "DUGOTRAJNA_SUSA_OK", "POTVRDJENO"; )
+then
+    insert(new UzrocnaVeza("DUGOTRAJNA_SUSA_OK", "POTVRDJENO"));
+    insert(new UzrocnaVeza("DUGOTRAJNA_SUSA", "AKTIVAN_" + $biljkaId));
 end
 
-query imaUslovNedovoljnoSvetlo(Long biljkaId, long nowMs)
-    $qBiljkaId : Long() from biljkaId
+rule "Potvrdi uslov NEDOVOLJNO_SVETLO"
+    salience 900
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $nowMs : nowMs )
     $o : SenzorskoOcitavanje(
-        biljkaId == $qBiljkaId,
+        biljkaId == $biljkaId,
+        svetlost < 200,
         $ts : timestampMs,
-        eval( nowMs - $ts <= 7L * 24L * 60L * 60L * 1000L ),
-        eval( svetlost < 200 )
+        eval( $nowMs - $ts <= 7L * 24L * 60L * 60L * 1000L )
     )
+    not UzrocnaVeza( "NEDOVOLJNO_SVETLO_OK", "POTVRDJENO"; )
+then
+    insert(new UzrocnaVeza("NEDOVOLJNO_SVETLO_OK", "POTVRDJENO"));
+    insert(new UzrocnaVeza("NEDOVOLJNO_SVETLO", "AKTIVAN_" + $biljkaId));
 end
 
-query imaRizikCrveniPaukBc(Long biljkaId, long nowMs)
-    $qBiljkaId : Long() from biljkaId
+rule "Potvrdi uslov PEPELNICA uslovi"
+    salience 900
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $nowMs : nowMs )
     $o : SenzorskoOcitavanje(
-        biljkaId == $qBiljkaId,
+        biljkaId == $biljkaId,
         $ts : timestampMs,
-        eval( nowMs - $ts <= 3L * 24L * 60L * 60L * 1000L ),
+        $vlaznostVazduha : vlaznostVazduha,
+        $temp : temperatura,
+        eval( $nowMs - $ts <= 24L * 60L * 60L * 1000L ),
+        eval( $vlaznostVazduha < 40 ),
+        eval( $temp >= 15 && $temp <= 28 )
+    )
+    not UzrocnaVeza( "PEPELNICA_OK", "POTVRDJENO"; )
+then
+    insert(new UzrocnaVeza("PEPELNICA_OK", "POTVRDJENO"));
+    insert(new UzrocnaVeza("NISKA_VLAGA_VAZDUHA", "AKTIVAN_" + $biljkaId));
+    insert(new UzrocnaVeza("UMERENA_TEMPERATURA",  "AKTIVAN_" + $biljkaId));
+end
+
+rule "Potvrdi uslov CRVENI PAUK uslovi"
+    salience 900
+    no-loop true
+when
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $nowMs : nowMs )
+    $o : SenzorskoOcitavanje(
+        biljkaId == $biljkaId,
         temperatura > 25,
-        vlaznostVazduha < 35
+        vlaznostVazduha < 35,
+        $ts : timestampMs,
+        eval( $nowMs - $ts <= 3L * 24L * 60L * 60L * 1000L )
     )
+    not UzrocnaVeza( "CRVENI_PAUK_OK", "POTVRDJENO"; )
+then
+    insert(new UzrocnaVeza("CRVENI_PAUK_OK", "POTVRDJENO"));
+    insert(new UzrocnaVeza("VISOKA_TEMP",         "AKTIVAN_" + $biljkaId));
+    insert(new UzrocnaVeza("NISKA_VLAGA_VAZDUHA", "AKTIVAN_" + $biljkaId));
 end
 
-query uzrokujeTrulezPrekomernomVlagom(Long biljkaId, long nowMs)
-    imaUslovPrekomernaVlaga(biljkaId, nowMs;)
-end
-
-query uzrokujeTrulezNiskomTemp(Long biljkaId, long nowMs)
-    imaUslovNiskaTemperatura(biljkaId, nowMs;)
-end
-
-query uzrokujeTrulez(Long biljkaId, long nowMs)
-    uzrokujeTrulezPrekomernomVlagom(biljkaId, nowMs;)
-    uzrokujeTrulezNiskomTemp(biljkaId, nowMs;)
-end
-
-query zutiListoviUzrokovaniTrulezi(Long biljkaId, long nowMs)
-    uzrokujeTrulez(biljkaId, nowMs;)
-end
-
-query zutiListoviUzrokovaniSusom(Long biljkaId, long nowMs)
-    imaUslovDugotrajnaSusa(biljkaId, nowMs;)
-end
-
-query zutiListoviUzrokovaniTamom(Long biljkaId, long nowMs)
-    imaUslovNedovoljnoSvetlo(biljkaId, nowMs;)
-end
-
-rule "Dijagnostika zutih listova - rekurzivni uzrok trulez"
-    salience 41
+rule "Dijagnostika - rekurzivni uzrok"
+    salience 100
     no-loop true
 when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $simptom : simptom, $nowMs : nowMs )
     $biljka : Biljka( id == $biljkaId )
-    zutiListoviUzrokovaniTrulezi( $biljkaId, $nowMs; )
+    uzrokSimptoma( $uzrok, $simptom; )
+    UzrocnaVeza( $uzrok, $aktivan; )
+    eval( $aktivan.equals("AKTIVAN_" + $biljkaId) )
 then
     insert(new Notifikacija($biljkaId,
-        "Rekurzivna dijagnoza za biljku " + $biljka.getNaziv() + ": ZUTI_LISTOVI -> TRULEZ_KORENA -> PREKOMERNA_VLAGA + NISKA_TEMPERATURA.",
+        "Rekurzivna dijagnoza za biljku " + $biljka.getNaziv() +
+        ": " + $simptom + " -> uzrok: " + $uzrok + ".",
         "ALARM"));
-    retract($upit);
 end
 
-rule "Dijagnostika trulezi korena"
-    salience 40
+rule "Dijagnostika - uzrok nepoznat"
+    salience 50
     no-loop true
 when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "TRULEZ_KORENA", $nowMs : nowMs )
+    $upit : DijaganostickiUpit( $biljkaId : biljkaId, $simptom : simptom, $nowMs : nowMs )
     $biljka : Biljka( id == $biljkaId )
-    imaSimptomTrulezKorena( $biljkaId, $nowMs; )
+    not (
+        uzrokSimptoma( $uzrok, $simptom; )
+        and
+        UzrocnaVeza( $uzrok, $aktivan; )
+        and
+        eval( $aktivan.equals("AKTIVAN_" + $biljkaId) )
+    )
 then
     insert(new Notifikacija($biljkaId,
-        "Dijagnoza: Trulez korena - uzrok je prekomerno zalivanje + niska temperatura. Preporuka: smanjiti zalivanje, povisiti temperaturu iznad 19C.",
-        "ALARM"));
-    retract($upit);
-end
-
-rule "Dijagnostika sunchanice"
-    salience 40
-    no-loop true
-when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "SUNCHANICA", $nowMs : nowMs )
-    $biljka : Biljka( id == $biljkaId, $tip : tipBiljke )
-    imaSimptomSunchanica( $biljkaId, $tip, $nowMs; )
-then
-    insert(new Notifikacija($biljkaId,
-        "Dijagnoza: Sunchanica - uzrok je previse direktne svetlosti i visoka temperatura. Preporuka: premestiti biljku ili ugasiti UV lampu.",
-        "ALARM"));
-    retract($upit);
-end
-
-rule "Dijagnostika pepelnice"
-    salience 40
-    no-loop true
-when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "PEPELNICA", $vizuelniSimptom : vizuelniSimptom, $nowMs : nowMs )
-    $biljka : Biljka( id == $biljkaId )
-    imaBolestPepelnica( $biljkaId, $nowMs, $vizuelniSimptom; )
-then
-    insert(new Notifikacija($biljkaId,
-        "Dijagnoza: Pepelnica potvrdjena za biljku " + $biljka.getNaziv() + ". Preporuka: tretirati fungicidom na bazi bakra i povecati cirkulaciju vazduha.",
-        "ALARM"));
-    retract($upit);
-end
-
-rule "Dijagnostika zutih listova - trulez korena"
-    salience 39
-    no-loop true
-when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
-    $biljka : Biljka( id == $biljkaId )
-    imaSimptomTrulezKorena( $biljkaId, $nowMs; )
-then
-    insert(new Notifikacija($biljkaId,
-        "Dijagnoza zutih listova: Trulez korena. Uzrok: prekomerno zalivanje + niska temperatura. Preporuka: smanjiti zalivanje, povisiti temperaturu iznad 19C.",
-        "ALARM"));
-    retract($upit);
-end
-
-rule "Dijagnostika zutih listova - nedostatak azota"
-    salience 38
-    no-loop true
-when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
-    $biljka : Biljka( id == $biljkaId )
-    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
-    imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
-then
-    insert(new Notifikacija($biljkaId,
-        "Dijagnoza zutih listova: Nedostatak azota. Uzrok: dugotrajna susa i iscrpljenost hraniva. Preporuka: prihranjivanje dusicnim djubrivom i umereno zalivanje.",
-        "ALARM"));
-    retract($upit);
-end
-
-rule "Dijagnostika zutih listova - etiolacija"
-    salience 37
-    no-loop true
-when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
-    $biljka : Biljka( id == $biljkaId )
-    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
-    not imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
-    imaUslovNedovoljnoSvetlo( $biljkaId, $nowMs; )
-then
-    insert(new Notifikacija($biljkaId,
-        "Dijagnoza zutih listova: Etiolacija. Uzrok: dugotrajna nedovoljna osvetljenost. Preporuka: premestiti biljku na svetlije mesto ili upaliti UV lampu.",
-        "ALARM"));
-    retract($upit);
-end
-
-rule "Dijagnostika zutih listova - napad stetocine"
-    salience 36
-    no-loop true
-when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
-    $biljka : Biljka( id == $biljkaId )
-    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
-    not imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
-    not imaUslovNedovoljnoSvetlo( $biljkaId, $nowMs; )
-    imaRizikCrveniPaukBc( $biljkaId, $nowMs; )
-then
-    insert(new Notifikacija($biljkaId,
-        "Dijagnoza zutih listova: Napad stetocine (crveni pauk). Uzrok: visoka temperatura i niska vlaznost vazduha. Preporuka: tretirati akaricidom i povecati vlaznost.",
-        "ALARM"));
-    retract($upit);
-end
-
-rule "Dijagnostika zutih listova - uzrok nepoznat"
-    salience 35
-    no-loop true
-when
-    $upit : DijaganostickiUpit( $biljkaId : biljkaId, simptom == "ZUTI_LISTOVI", $nowMs : nowMs )
-    $biljka : Biljka( id == $biljkaId )
-    not imaSimptomTrulezKorena( $biljkaId, $nowMs; )
-    not imaUslovDugotrajnaSusa( $biljkaId, $nowMs; )
-    not imaUslovNedovoljnoSvetlo( $biljkaId, $nowMs; )
-    not imaRizikCrveniPaukBc( $biljkaId, $nowMs; )
-then
-    insert(new Notifikacija($biljkaId,
-        "Dijagnoza zutih listova: Uzrok nije mogao biti automatski utvrden. Preporuka: rucni pregled biljke i konsultacija sa strucnjakom.",
+        "Dijagnoza za biljku " + $biljka.getNaziv() +
+        ": Uzrok simptoma " + $simptom + " nije mogao biti automatski utvrden. Preporuka: rucni pregled.",
         "UPOZORENJE"));
-    retract($upit);
 end
